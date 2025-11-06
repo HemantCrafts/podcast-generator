@@ -1,12 +1,12 @@
 import os
 
 import gradio as gr
-# from dotenv import load_dotenv
+from dotenv import load_dotenv
 from elevenlabs import ElevenLabs
 
 from blog_summarizer import summarize_blog
 
-# load_dotenv()
+load_dotenv()
 
 
 def process_url(url):
