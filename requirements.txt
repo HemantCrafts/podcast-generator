@@ -1,0 +1,6 @@
+crewai[google-genai]
+crewai-tools
+gradio
+elevenlabs
+python-dotenv
+firecrawl
