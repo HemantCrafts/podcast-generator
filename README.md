@@ -42,7 +42,7 @@ This application uses CrewAI agents powered by Google's Gemini 2.0 Flash to scra
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/faisalquaiyum/podcast-generator.git
+   git clone https://github.com/HemantCrafts/podcast-generator
    cd podcast-generator
    ```
 
