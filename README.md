@@ -2,9 +2,6 @@
 
 An intelligent application that transforms blog posts into engaging podcast episodes using AI agents and text-to-speech technology.
 
-## 🌟 Live Demo
-
-Try it now: **[https://huggingface.co/spaces/famyy/podcast-generator](https://huggingface.co/spaces/famyy/podcast-generator)**
 
 ## 📋 Overview
 
@@ -178,11 +175,6 @@ Podcast Generator/
 
 ## 🚀 Deployment
 
-### Hugging Face Spaces
-
-This project is deployed on Hugging Face Spaces:
-**[https://huggingface.co/spaces/famyy/podcast-generator](https://huggingface.co/spaces/famyy/podcast-generator)**
-
 To deploy your own:
 
 1. Fork this repository
@@ -201,12 +193,11 @@ This project is open source and available under the MIT License.
 
 ## 👤 Author
 
-**Faisal**
+**Hemant**
 
-- GitHub: [@faisalquaiyum](https://github.com/faisalquaiyum)
-- Hugging Face: [@famyy](https://huggingface.co/famyy)
-- GitHub Repo: [https://github.com/faisalquaiyum/podcast-generator](https://github.com/faisalquaiyum/podcast-generator)
-- Live Demo: [https://huggingface.co/spaces/famyy/podcast-generator](https://huggingface.co/spaces/famyy/podcast-generator)
+- GitHub: [@HemantCrafts](https://github.com/HemantCrafts)
+- Hugging Face: [@Hemantkohli18](https://huggingface.co/Hemantkohli18)
+- GitHub Repo: (https://github.com/HemantCrafts/podcast-generator)
 
 ## 🙏 Acknowledgments
 
@@ -216,8 +207,5 @@ This project is open source and available under the MIT License.
 - [Firecrawl](https://firecrawl.dev/) - Web scraping tool
 - [Gradio](https://gradio.app/) - UI framework
 
-## 📞 Support
-
-If you have any questions or issues, please open an issue on the repository or visit the [Hugging Face Space](https://huggingface.co/spaces/famyy/podcast-generator).
 
 ---
