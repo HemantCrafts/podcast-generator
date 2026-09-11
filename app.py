@@ -115,21 +115,26 @@ studio_theme = gr.themes.Soft(
 )
 
 
-def process_url(url, progress=gr.Progress()):
+def process_url(url, reuse_summary=True, progress=gr.Progress()):
     started_at = perf_counter()
+    summary = None
+    timings = {}
     try:
         if not url or not url.strip():
             return None, None, "Enter a blog URL to get started."
 
-        progress(0.05, desc="Reading the article and generating your summary…")
-        summary = summarize_blog(url.strip())
-        print("-" * 40)
-        print("Blog Summary:", summary)
-        print("-" * 40)
+        summary = summarize_blog(
+            url.strip(),
+            use_cache=reuse_summary,
+            progress=lambda value, message: progress(value, desc=message),
+            timings=timings,
+        )
 
         progress(0.65, desc="Generating narration with ElevenLabs…")
+        audio_started_at = perf_counter()
+        print("[ElevenLabs] Starting narration…", flush=True)
         api_key = os.environ.get("ELEVENLABS_API_KEY")
-        client = ElevenLabs(api_key=api_key)
+        client = ElevenLabs(api_key=api_key, timeout=90)
         response = client.text_to_speech.convert(
             voice_id="JBFqnCBsd6RMkjVDRZzb",
             output_format="mp3_44100_128",
@@ -142,12 +147,24 @@ def process_url(url, progress=gr.Progress()):
             for chunk in response:
                 f.write(chunk)
 
+        audio_elapsed = perf_counter() - audio_started_at
+        print(f"[ElevenLabs] Audio saved after {audio_elapsed:.1f}s", flush=True)
         progress(1, desc="Your podcast is ready")
         elapsed = perf_counter() - started_at
-        return summary, audio_path, f"Podcast ready! Generated in {elapsed:.0f} seconds."
+        summary_status = (
+            "Summary cache hit"
+            if timings["cache_hit"]
+            else f"Firecrawl {timings['firecrawl']:.1f}s · Gemini {timings['gemini']:.1f}s"
+        )
+        return (
+            summary,
+            audio_path,
+            f"Ready in {elapsed:.1f}s · {summary_status} · Audio {audio_elapsed:.1f}s",
+        )
     except Exception as e:
-        print("Error processing URL:", str(e))
-        return None, None, f"Error: {str(e)}"
+        elapsed = perf_counter() - started_at
+        print(f"Error after {elapsed:.1f}s:", str(e), flush=True)
+        return summary, None, f"Error after {elapsed:.1f}s: {str(e)}"
 
 
 with gr.Blocks(title="AI Podcast Studio", theme=studio_theme, css=STUDIO_CSS) as demo:
@@ -166,6 +183,11 @@ with gr.Blocks(title="AI Podcast Studio", theme=studio_theme, css=STUDIO_CSS) as
             label="Blog URL",
             placeholder="https://example.com/your-favourite-article",
             lines=1,
+        )
+        reuse_summary = gr.Checkbox(
+            label="Reuse a recent summary for this URL",
+            value=True,
+            info="Cached for up to one hour while the app runs. Uncheck to fetch fresh content. Audio is generated each time.",
         )
         generate_btn = gr.Button(
             "Generate podcast", variant="primary", elem_id="generate-button"
@@ -211,7 +233,7 @@ with gr.Blocks(title="AI Podcast Studio", theme=studio_theme, css=STUDIO_CSS) as
     for event in (generate_btn.click, url_input.submit):
         event(
             fn=process_url,
-            inputs=[url_input],
+            inputs=[url_input, reuse_summary],
             outputs=[summary_output, audio_output, status_output],
             concurrency_limit=1,
             concurrency_id="podcast-generation",
