@@ -8,7 +8,7 @@ load_dotenv()
 
 
 llm = LLM(
-    model="gemini/gemini-2.0-flash",
+    model=os.getenv("GEMINI_MODEL", "gemini/gemini-3.6-flash"),
     temperature=0.7,
     api_key=os.getenv("GEMINI_API_KEY"),
 )
