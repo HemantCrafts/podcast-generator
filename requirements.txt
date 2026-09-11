@@ -1,6 +1,6 @@
 crewai[google-genai]
 crewai-tools
-gradio
+gradio>=5,<6
 elevenlabs
 python-dotenv
 firecrawl
