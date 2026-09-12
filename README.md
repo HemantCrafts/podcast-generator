@@ -97,7 +97,7 @@ This application uses CrewAI agents powered by Google's Gemini 2.0 Flash to scra
    ```
 
 7. **Access the application**
-   - Open your browser and go to: `http://localhost:7860`
+   - Open your browser and go to: `https://podcast-generator-40at.onrender.com/`
    - Login credentials:
      - Username: `devmode`
      - Password: `testdeployment8721`
