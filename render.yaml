@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: podcast-generator
+    env: docker
+    dockerfilePath: Dockerfile
+    # Render will use the Dockerfile in the repo to build the image.
+    # No additional build command is needed.
+    # The CMD defined in Dockerfile launches the Gradio app.
+    # Expose the port that Gradio runs on (default 7860).
+    ports:
+      - 7860
+    envVars:
+      - key: ELEVENLABS_API_KEY
+        # Set this secret in the Render dashboard. Do NOT commit the actual key.
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      # Add any other env vars from your .env as needed.
