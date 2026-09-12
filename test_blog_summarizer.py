@@ -105,6 +105,37 @@ class SummaryTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "Firecrawl connection failed or timed out"):
                 summarizer._post_json("https://example.com", {}, {}, "Firecrawl", 60)
 
+    def test_timeout_is_retried_once(self):
+        import json
+        from types import SimpleNamespace
+
+        class FakeResponse:
+            def __init__(self, body):
+                self.body = body
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc_info):
+                return False
+
+            def read(self, *args):
+                return self.body
+
+        ok = FakeResponse(json.dumps({"ok": True}).encode())
+        with patch.object(summarizer, "urlopen", side_effect=[TimeoutError, ok]) as urlopen, \
+             patch.object(summarizer.time, "sleep"):
+            result = summarizer._post_json("https://example.com", {}, {}, "Gemini", 60, retries=1)
+        self.assertEqual(result, {"ok": True})
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_article_over_cap_is_truncated(self):
+        article = "A" * (summarizer.MAX_ARTICLE_CHARS + 500)
+        with patch.object(summarizer, "_scrape_article", return_value=article), \
+             patch.object(summarizer, "_generate_summary", return_value="Summary") as generate:
+            summarizer.summarize_blog("https://example.com")
+        self.assertEqual(len(generate.call_args.args[0]), summarizer.MAX_ARTICLE_CHARS)
+
 
 if __name__ == "__main__":
     unittest.main()

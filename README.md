@@ -12,6 +12,7 @@ This application uses CrewAI agents powered by Google's Gemini 2.0 Flash to scra
 - 🤖 **AI-Powered Summarization**: Uses CrewAI agents with Gemini 2.0 Flash LLM
 - 🌐 **Web Scraping**: Extracts content from any blog URL using Firecrawl
 - 🎵 **Text-to-Speech**: Converts summaries to natural-sounding audio with ElevenLabs
+- 🗣️ **Multi-Agent Podcast Mode**: Researcher → Host + Expert conversational podcasts with two distinct ElevenLabs voices combined into one MP3
 - 🖥️ **User-Friendly Interface**: Built with Gradio for easy interaction
 - 🔒 **Secure Access**: Password-protected interface
 - 🐳 **Docker Support**: Containerized for easy deployment
@@ -81,7 +82,13 @@ This application uses CrewAI agents powered by Google's Gemini 2.0 Flash to scra
    GEMINI_API_KEY=your_gemini_api_key_here
    FIRECRAWL_API_KEY=your_firecrawl_api_key_here
    ELEVENLABS_API_KEY=your_elevenlabs_api_key_here
+
+   # Optional: multi-agent podcast voices (defaults to George + Alice if unset)
+   HOST_VOICE_ID=your_elevenlabs_host_voice_id
+   EXPERT_VOICE_ID=your_elevenlabs_expert_voice_id
    ```
+
+   > Note: voices are resolved against the voices available on your ElevenLabs account when possible, so the app avoids `paid_plan_required` (402) errors on free plans. Library-only voices such as Rachel require a paid subscription; if you see a 402, switch to a premade voice you own or set the voice IDs above to your own voice IDs.
 
 6. **Run the application**
 
@@ -116,17 +123,22 @@ Access at: `http://localhost:7860`
 1. Open the application in your browser
 2. Enter the credentials (username: `devmode`, password: `testdeployment8721`)
 3. Paste a blog URL into the input field
-4. Click "Generate Podcast"
-5. Wait for the AI agents to scrape and summarize the content
-6. Listen to the generated podcast audio
-7. View the text summary
+4. Choose a podcast mode:
+   - **Single Voice Podcast**: pick a narrator voice and narration length, then generate. This is the original workflow.
+   - **Multi-Agent Podcast**: a Researcher extracts facts, a Host writes questions, and an Expert answers them. Each speaker is voiced by a different ElevenLabs voice and the audio is combined into one MP3.
+5. Click "Generate Podcast"
+6. Wait for the AI agents to scrape, summarize, and generate audio
+7. Listen to the generated podcast audio and view the text
 
 ## 🏗️ Project Structure
 
 ```
 Podcast Generator/
-├── app.py                 # Main Gradio application
-├── blog_summarizer.py     # CrewAI agents and tasks
+├── app.py                 # Main Gradio application (both podcast modes)
+├── blog_summarizer.py     # Single-voice scrape + summarization via Gemini
+├── multi_agent.py         # Multi-agent conversation pipeline (Researcher/Host/Expert)
+├── test_blog_summarizer.py # Unit tests for single-voice mode
+├── test_multi_agent.py    # Unit tests for multi-agent mode
 ├── requirements.txt       # Python dependencies
 ├── Dockerfile            # Docker configuration
 ├── .dockerignore         # Docker ignore rules
@@ -136,6 +148,8 @@ Podcast Generator/
 ```
 
 ## 🤖 How It Works
+
+### Single Voice Podcast
 
 1. **Blog Scraper Agent**:
 
@@ -152,6 +166,18 @@ Podcast Generator/
    - Converts the summary to audio using ElevenLabs
    - Uses high-quality voice synthesis (eleven_flash_v2_5)
    - Outputs in MP3 format (44.1kHz, 128kbps)
+
+### Multi-Agent Podcast
+
+1. **Firecrawl Scrape**: extracts the article text (same step as single voice)
+2. **Researcher Agent**: pulls out the key facts, statistics, examples, and arguments into bullet-point research notes
+3. **Host Agent**: writes a spoken intro, a series of natural interview questions, and an outro from the research notes
+4. **Expert Agent**: answers each question conversationally, explaining concepts and adding examples and perspective
+5. **Dialogue Assembly**: turns the labelled agent output into an interleaved `HOST:` / `EXPERT:` script
+6. **Multi-Voice Text-to-Speech**: each `HOST` line is spoken with `HOST_VOICE_ID` and each `EXPERT` line with `EXPERT_VOICE_ID` using ElevenLabs
+7. **Audio Combination**: all spoken segments are merged into one continuous MP3 with ffmpeg (bundled via `imageio-ffmpeg`)
+
+The conversation text is cached per URL for up to one hour, so repeating a request skips the agent calls.
 
 ## 🔑 API Keys Setup
 

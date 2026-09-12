@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from collections import OrderedDict
 from threading import Lock
 from time import monotonic, perf_counter
@@ -14,6 +15,10 @@ load_dotenv()
 CACHE_TTL_SECONDS = 3600
 CACHE_MAX_ENTRIES = 32
 MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+MAX_ARTICLE_CHARS = 100_000
+FIRECRAWL_TIMEOUT_SECONDS = 120
+GEMINI_TIMEOUT_SECONDS = 180
+GEMINI_TIMEOUT_RETRIES = 1
 _summary_cache = OrderedDict()
 _cache_lock = Lock()
 
@@ -26,35 +31,43 @@ SUMMARY_INSTRUCTIONS = (
 )
 
 
-def _post_json(url, payload, headers, stage, timeout):
+def _post_json(url, payload, headers, stage, timeout, retries=0):
     request = Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
         headers={"Content-Type": "application/json", **headers},
         method="POST",
     )
-    try:
-        with urlopen(request, timeout=timeout) as response:
-            body = response.read(MAX_RESPONSE_BYTES + 1)
-        if len(body) > MAX_RESPONSE_BYTES:
-            raise RuntimeError(f"{stage} response is too large to process.")
-        result = json.loads(body)
-        if not isinstance(result, dict):
-            raise RuntimeError(f"{stage} returned an unexpected response.")
-        return result
-    except HTTPError as error:
-        status = error.code
-        error.close()
-        raise RuntimeError(
-            f"{stage} returned HTTP {status}. Check the provider dashboard "
-            "for service availability, model access, and remaining quota."
-        ) from error
-    except (TimeoutError, URLError) as error:
-        raise RuntimeError(
-            f"{stage} connection failed or timed out. Please try again later."
-        ) from error
-    except (ValueError, UnicodeError) as error:
-        raise RuntimeError(f"{stage} did not return valid JSON.") from error
+    for attempt in range(retries + 1):
+        try:
+            with urlopen(request, timeout=timeout) as response:
+                body = response.read(MAX_RESPONSE_BYTES + 1)
+            if len(body) > MAX_RESPONSE_BYTES:
+                raise RuntimeError(f"{stage} response is too large to process.")
+            result = json.loads(body)
+            if not isinstance(result, dict):
+                raise RuntimeError(f"{stage} returned an unexpected response.")
+            return result
+        except HTTPError as error:
+            status = error.code
+            error.close()
+            raise RuntimeError(
+                f"{stage} returned HTTP {status}. Check the provider dashboard "
+                "for service availability, model access, and remaining quota."
+            ) from error
+        except (TimeoutError, URLError) as error:
+            if attempt < retries:
+                print(
+                    f"[{stage}] Connection timed out on attempt {attempt + 1}; retrying…",
+                    flush=True,
+                )
+                time.sleep(2 * (attempt + 1))
+                continue
+            raise RuntimeError(
+                f"{stage} connection failed or timed out. Please try again later."
+            ) from error
+        except (ValueError, UnicodeError) as error:
+            raise RuntimeError(f"{stage} did not return valid JSON.") from error
 
 
 def _scrape_article(url, api_key):
@@ -63,7 +76,7 @@ def _scrape_article(url, api_key):
         {"url": url, "formats": ["markdown"], "onlyMainContent": True},
         {"Authorization": "Bearer " + api_key},
         stage="Firecrawl",
-        timeout=60,
+        timeout=FIRECRAWL_TIMEOUT_SECONDS,
     )
     data = result.get("data")
     text = data.get("markdown") if isinstance(data, dict) else None
@@ -85,7 +98,8 @@ def _generate_summary(article, model, api_key):
         },
         {"x-goog-api-key": api_key},
         stage="Gemini",
-        timeout=90,
+        timeout=GEMINI_TIMEOUT_SECONDS,
+        retries=GEMINI_TIMEOUT_RETRIES,
     )
     candidates = result.get("candidates") or []
     if not candidates:
@@ -168,7 +182,13 @@ def summarize_blog(url, *, use_cache=True, progress=None, timings=None):
     article = timed_call("firecrawl", _scrape_article, url, firecrawl_key)
     if progress:
         progress(0.35, "Writing your summary with Gemini…")
-    summary = timed_call("gemini", _generate_summary, article, model, gemini_key)
+    summary = timed_call(
+        "gemini",
+        _generate_summary,
+        article[:MAX_ARTICLE_CHARS],
+        model,
+        gemini_key,
+    )
     # A forced refresh replaces the older cache entry only after success.
     _store_cached(cache_key, summary)
     return summary

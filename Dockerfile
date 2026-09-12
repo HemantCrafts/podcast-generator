@@ -16,6 +16,7 @@ pip install --no-cache-dir --upgrade -r requirements.txt
 
 COPY --chown=user app.py app.py
 COPY --chown=user blog_summarizer.py blog_summarizer.py
+COPY --chown=user multi_agent.py multi_agent.py
 
 # Expose check port that Gradio will run on
 EXPOSE 7860
