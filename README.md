@@ -118,6 +118,11 @@ docker run -it -p 7860:7860 --env-file .env ai-podcast-generator
 
 Access at: `http://localhost:7860`
 
+**Deployed instance:**  
+- URL: https://podcast-generator-40at.onrender.com/  
+- Username: `devmode`  
+- Password: `testdeployment8721`
+
 ## 📝 Usage
 
 1. Open the application in your browser
